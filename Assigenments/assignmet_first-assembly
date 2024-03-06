@@ -1,0 +1,152 @@
+;---------------------------------------------------------------
+;Tittle: Temperature Control
+;---------------------------------------------------------------
+;Program Details:
+;Purpose: This program is designed to take two inputs (hard coded in this case),
+;save them to specified registars, and compare them, then depending on their 
+;output turn on a heater circuit (LED) or a cooler circuit (LED)
+;Dependencies: NONE
+;Compiler: MPLAB X IDE v6.20
+;Author: Charlie Sterling
+;OUTPUTS: 
+;define measuredTempDecimal
+;define refTempInputDecimal
+;define HEATER PORTD,2
+;define COOLER PORTD,1
+;INPUTS:
+;define measuredTempInput
+;define refTempInput
+;Version: V.1 - 3/3/2024
+    
+
+;----------------------------------------
+;Initialization
+;----------------------------------------
+#include "C:\Users\dragon\MPLABXProjects\assignment_1.X\AssemblyConfig.inc"
+#include <xc.inc>
+
+;---------------------------------------
+;Program Inputs
+;---------------------------------------
+measuredTempInput equ 30 ;measured temp in decimal
+refTempInput equ 33 ;keypad temp in decimal
+LEDIN equ 0x50
+;---------------------------------------
+;Program Constants
+;---------------------------------------
+measuredTempREG	equ 0x20; where measured temp is stored
+refTempREG  equ 0x21; where keypad temp is stored
+lowrefdec   equ	0x60 ;Lower bit of decimal Reference temp
+highrefdec  equ	0x61 ;high bit of decimal Reference temp
+upprefdec   equ	0x62 ;upper bit of decimal Reference temp
+lowmesdec   equ	0x70 ;Lower bit of decimal measured temp
+highmesdec  equ	0x71 ;high bit of decimal measured temp
+uppmesdec   equ	0x72 ;upper bit of decimal measured temp
+negmeshighbit equ 0x52 ;high nit of a negative measured temp
+highbit	equ 0x53 ;incremented to count how many is in ten's digit(high)
+num equ	0x54 ;numerator for the hex to dec covnersion
+;#define HEATER PORTD,2
+;#define COOLER PORTD,1
+;contREG	equ 0x25
+;---------------------------------------
+;Main Code
+;---------------------------------------
+	PSECT absdata,abs,ovrld
+	org 0x00
+	GOTO START
+	
+	org 0x20
+START:
+    movlw   0b00000000
+    movwf   TRISD,0
+    movwf   LEDIN
+    movwf   STATUS
+    movlw measuredTempInput
+    movwf measuredTempREG
+    movlw refTempInput
+    movwf refTempREG
+    BTFSC measuredTempREG,7
+    goto _NEGATIVE
+    cpfseq measuredTempREG
+    goto compare
+    goto equal
+
+compare:
+    movff   measuredTempREG,WREG
+    cpfsgt refTempREG
+    goto    _COOLER
+    goto    _HEATER
+    
+equal:
+    goto STOP
+    
+_HEATER:
+    bsf LEDIN,1
+    movff LEDIN,PORTD
+    goto _LOOP
+_COOLER:
+    bsf LEDIN,2
+    movff LEDIN,PORTD
+    goto _LOOP
+_NEGATIVE:
+    movff measuredTempREG,WREG
+    negf WREG
+    sublw 0x1 ;performed 2 complement
+    movwf measuredTempREG
+    goto _HEATER ;if measured is below zero, ref is always higher
+_LOOP:
+    movff measuredTempREG,num
+    call _conversionmes
+    movff refTempREG,num
+    call _conversionref
+    goto STOP
+    
+_conversionmes:
+    movlw 10
+    clrf highbit
+loop1:	
+    incf highbit
+    subwf num
+    bc loop1
+    addwf num
+    decf highbit
+    movff num,lowmesdec
+    movff highbit,num
+    clrf highbit
+loop2:
+    incf highbit
+    subwf num
+    bc loop2
+    addwf num
+    decf highbit
+    movff num,highmesdec
+    movff highbit,num
+    movff num,uppmesdec
+    return
+    
+_conversionref:
+    movlw 10    
+    clrf highbit
+loop3:	
+    incf highbit
+    subwf num
+    bc loop3
+    addwf num
+    decf highbit
+    movff num,lowrefdec
+    movff highbit,num
+    clrf highbit
+loop4:
+    incf highbit
+    subwf num
+    bc loop4
+    addwf num
+    decf highbit
+    movff num,highrefdec
+    movff highbit,num
+    movff num,upprefdec
+    return
+
+STOP:    
+    sleep
+    End
