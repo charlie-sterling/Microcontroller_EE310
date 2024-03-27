@@ -1,0 +1,203 @@
+
+;---------------------
+; Title: Counter
+;---------------------
+; Program Details:
+; The purpose of this program is to increment a counter up when one button is 
+; pushed and to decrement a counter when the other is pushed. When both buttons 
+; are reset counter.
+    
+; Inputs: RB0, RB1
+; Outputs: RD0-7
+; Setup: The Curiosity Board
+
+; Date: March 26, 2024
+; File Dependencies / Libraries: It is required to include the
+;   AssemblyConfig.inc in the Header Folder
+; Compiler: xc8, 2.4
+; Author: Charlie Sterling
+; Versions:
+;       V1.0: Original
+
+;---------------------
+; Initialization
+;---------------------
+#include "C:\Users\dragon\MPLABXProjects\counter_project.X\AssemblyConfig.inc"
+#include <xc.inc>
+   
+;---------------------
+; Program Inputs
+;---------------------
+Inner_loop  equ 255 // in decimal
+Outer_loop  equ 255
+;---------------------
+; Program Constants
+;---------------------
+REG10   equ     10h   // in HEX
+REG11   equ     11h   
+LOWER	equ	0x1F
+UPPER	equ	0x2F
+;---------------------
+; Main Program
+;---------------------    
+    PSECT absdata,abs,ovrld
+    
+    org 0x20
+    
+_setup:
+    clrf WREG
+    RCALL _setupportD
+    RCALL _setupportB
+    clrf PORTB
+    MOVLW 0x00
+    MOVWF TBLPTRL
+    MOVLW 0x0A
+    MOVWF TBLPTRH
+    MOVLW 0x00
+    MOVWF TBLPTRU
+    MOVLW 0x1F
+    MOVWF LOWER
+    MOVLW 0x2F
+    MOVWF UPPER
+    MOVLW 0x00
+_main:
+    BTFSC PORTB,0
+    goto _switchA
+    BTFSC PORTB,1
+    goto _switchB
+    goto _main
+    
+    
+    
+    
+;----------------------
+; Called Functions
+;----------------------
+    
+_setupportD:
+     BANKSEL	PORTD ;
+    CLRF	PORTD ;Init PORTA
+    BANKSEL	LATD ;Data Latch
+    CLRF	LATD ;
+    BANKSEL	ANSELD ;
+    CLRF	ANSELD ;digital I/O
+    BANKSEL	TRISD ;
+    MOVLW	0b00000000 ;Set RD[7:1] as outputs
+    MOVWF	TRISD ;and set RD0 as ouput
+    RETURN
+    
+_setupportB:
+    BANKSEL	PORTB ;
+    CLRF	PORTB ;Init PORTB
+    BANKSEL	LATB ;Data Latch
+    CLRF	LATB ;
+    BANKSEL	ANSELB ;
+    CLRF	ANSELB ;digital I/O
+    BANKSEL	TRISB ;
+    MOVLW	0b11111111 ;
+    MOVWF	TRISB ;
+    RETURN
+_delay:
+    MOVLW       Inner_loop
+    MOVWF       REG10
+    MOVLW       Outer_loop
+    MOVWF       REG11
+
+_loop1:
+    DECF        REG10,1
+    BNZ         _loop1
+    DECF        REG11,1 // outer loop
+    BNZ        _loop1
+    MOVLW       Inner_loop
+    MOVWF       REG10
+    
+    RETURN
+
+
+_switchA:
+    BTFSC PORTB,1
+    goto _bothswitch
+    TBLRD*+
+    MOVFF TABLAT,WREG
+    RCALL _LOWER
+    RCALL _UPPER
+    MOVFF WREG, PORTD
+    BTFSS PORTB,0
+    goto _main
+    RCALL _delay
+    GOTO _switchA
+
+
+_switchB:
+    BTFSC PORTB,0
+    goto _bothswitch
+    TBLRD*-
+    MOVFF TABLAT,WREG
+    RCALL _LOWER ;checking if pointer is out of bounds
+    RCAll _UPPER ;checking if pointer is out of bounds
+    MOVFF WREG, PORTD
+    BTFSS PORTB,1
+    goto _main
+    RCALL _delay
+    goto _switchB
+
+
+_bothswitch:
+    MOVLW 0x3F
+    MOVWF PORTD
+    RCALL _delay
+    MOVLW 0x00
+    MOVWF TBLPTRL
+    MOVLW 0x0A
+    MOVWF TBLPTRH
+    MOVLW 0x00
+    MOVWF TBLPTRU
+    BTFSS PORTB,0
+    goto _main
+    BTFSS PORTB,1
+    goto _main
+    goto _bothswitch
+    
+    
+_LOWER:;if the point goes to a spot lower than 0 then point must be reset
+    CPFSEQ LOWER
+    goto _over1
+    MOVLW 0x0F
+    MOVWF TBLPTRL
+    MOVLW 0x0A
+    MOVWF TBLPTRH
+    goto _main
+_over1:
+    Return
+    
+_UPPER:; if pointer goes to spot higher than F must be reset
+    CPFSEQ UPPER
+    goto _over2
+    MOVLW 0x00
+    MOVWF TBLPTRL
+    MOVLW 0x0A
+    MOVWF TBLPTRH
+    goto _main
+_over2:
+    Return
+    org 0x09FF
+    DB 0x1F ;LOWER BOUND
+    DB 0x3F ;0
+    DB 0x06;1
+    DB 0x5B;2
+    DB 0x4F;3
+    DB 0x66;4
+    DB 0x6D;5
+    DB 0X7D;6
+    DB 0x07;7
+    DB 0x7F;8
+    DB 0x67 ;9
+    DB 0xF7 ;A
+    DB 0xFF ;B
+    DB 0xB9 ;C
+    DB 0xBF ;D
+    DB 0xF9 ;E
+    DB 0xF1 ;F
+    DB 0x2F ; UPPER BOUND
+    
+END
