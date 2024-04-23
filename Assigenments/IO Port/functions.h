@@ -3,38 +3,6 @@
   Purpose: Functions used in assignments
 *?
 
-//Interrupt Function
-void __interrupt(irq(INT0),base(0x4008)) INT0_ISR(void)
-{
-    if (PIR1bits.INT0IF == 1)
-    {
-        PORTBbits.RB3 = 0;
-        PORTBbits.RB7 = 1;//turn on buzzer
-        __delay_ms(100);//delay
-        PORTBbits.RB7 = 0;//turn off buzzer
-        __delay_ms(100);//delay
-        PORTBbits.RB7 = 1;//turn on buzzer
-        __delay_ms(100);//delay
-        PORTBbits.RB7 = 0;//turn off buzzer
-        PIR1bits.INT0IF = 0; //clear the interrupt
-    }
-}
-
-//Set up interrupt
-void inter_init(void)
-{
-    INTCON0bits.IPEN = 1;
-    INTCON0bits.GIEH = 1;
-    INTCON0bits.GIEL = 1;
-    INTCON0bits.INT0EDG = 1;
-    IPR1bits.INT0IP = 1;
-    PIE1bits.INT0IE = 1;
-    PIR1bits.INT0IF = 0;
-    IVTBASEU = 0x00;
-    IVTBASEH = 0x40;
-    IVTBASEL = 0x08;
-}
-
 //Input function
 
 int input(void)
